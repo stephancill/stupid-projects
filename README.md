@@ -44,15 +44,13 @@ scripts/uninstall-login-item.sh  # removes it
 .build/ProjectsBar.app/Contents/MacOS/ProjectsBar --open <path>    # open like a menu click
 ```
 
-To install it in Tinycast:
+To build and install it into Tinycast (rerun after changes):
 
 ```sh
-cd extensions/projects-bar
-bun install
-bun run build
+scripts/install-tinycast-extension.sh
 ```
 
-Then in Tinycast, go to Settings → Extensions → Add from folder, pick `extensions/projects-bar/dist`, and set the `ProjectsBar App` preference to the path of your built `ProjectsBar.app`.
+The script copies the build into `~/Library/Application Support/com.tinycast.app/extensions/projects-bar`, like Tinycast's Add from folder does, and defaults the `ProjectsBar App` preference to this repo's `.build/ProjectsBar.app`. Extensions must be enabled in Tinycast's Settings → Extensions. Tinycast picks up a new install at launch or when that pane opens. To use the extension in Raycast instead, run `bun run build` in `extensions/projects-bar` and set the preference by hand.
 
 ## How it works
 
