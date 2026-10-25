@@ -35,6 +35,25 @@ scripts/install-login-item.sh    # installs a LaunchAgent that opens the app at 
 scripts/uninstall-login-item.sh  # removes it
 ```
 
+## Tinycast / Raycast extension
+
+`extensions/projects-bar` is a Raycast-format extension that lists the same projects in [Tinycast](https://github.com/abue-ammar/tinycast) (or Raycast) and opens them in Scotty. It calls the ProjectsBar binary's command-line mode:
+
+```sh
+.build/ProjectsBar.app/Contents/MacOS/ProjectsBar --list-json      # merged project list as JSON
+.build/ProjectsBar.app/Contents/MacOS/ProjectsBar --open <path>    # open like a menu click
+```
+
+To install it in Tinycast:
+
+```sh
+cd extensions/projects-bar
+bun install
+bun run build
+```
+
+Then in Tinycast, go to Settings → Extensions → Add from folder, pick `extensions/projects-bar/dist`, and set the `ProjectsBar App` preference to the path of your built `ProjectsBar.app`.
+
 ## How it works
 
 See [docs/implementation-notes.md](docs/implementation-notes.md) for details on project discovery, active-shell detection, and how Scotty terminals are opened.

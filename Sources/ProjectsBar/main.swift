@@ -7,7 +7,7 @@ private let maxRecentProjects = 30
 private let scottyAppPath = "/Applications/Scotty.app"
 private let scottyCLIPath = "\(scottyAppPath)/Contents/Helpers/scotty"
 
-struct Project: Equatable {
+struct Project: Equatable, Sendable {
     let path: String
     let name: String?
     let lastOpenedAt: Date?
@@ -48,10 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func refreshProjects() {
-        let recent = mergeProjects(
-            loadRecentProjects(limit: maxRecentProjects) + loadRecentClaudeProjects(),
-            limit: maxRecentProjects
-        )
+        let recent = loadAllRecentProjects()
         projects = Array(recent.prefix(10))
         moreProjects = Array(recent.dropFirst(10))
         activeProjectPaths = loadScottyShellWorkingDirectories()
@@ -126,6 +123,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let activeCount = projects.filter(isScottyActive).count
         statusItem.button?.title = "● \(activeCount)"
     }
+}
+
+private func loadAllRecentProjects() -> [Project] {
+    mergeProjects(
+        loadRecentProjects(limit: maxRecentProjects) + loadRecentClaudeProjects(),
+        limit: maxRecentProjects
+    )
 }
 
 private func loadRecentProjects(limit: Int) -> [Project] {
@@ -327,12 +331,24 @@ private func loadProcessRows() -> [ProcessRow] {
 }
 
 /// Focuses the project's terminal in its Scotty workspace, or creates it, via the bundled `scotty` CLI.
-/// The terminal is named after the project path, so projects sharing a display name (and therefore a
-/// workspace) stay distinct. A focused terminal keeps its directory and command, so `claude` only
-/// runs when the terminal is created. The CLI can wait up to 30 seconds for Scotty to reply, so it
-/// runs off the main thread.
+/// The CLI can wait up to 30 seconds for Scotty to reply, so it runs off the main thread.
 @MainActor
 private func openScottyTerminal(for project: Project, runClaude: Bool) {
+    Task.detached {
+        let result = runScottyTerminal(for: project, runClaude: runClaude)
+        guard result.status == EXIT_SUCCESS else {
+            await MainActor.run {
+                showError(result.errorOutput.isEmpty ? "Failed to open \(project.path) in Scotty (exit \(result.status))." : result.errorOutput)
+            }
+            return
+        }
+    }
+}
+
+/// The terminal is named after the project path, so projects sharing a display name (and therefore a
+/// workspace) stay distinct. A focused terminal keeps its directory and command, so `claude` only
+/// runs when the terminal is created. Blocks until the CLI exits.
+private func runScottyTerminal(for project: Project, runClaude: Bool) -> (output: String, errorOutput: String, status: Int32) {
     let workspace = project.displayName.isEmpty ? project.path : project.displayName
     var arguments = [
         "terminal",
@@ -348,18 +364,54 @@ private func openScottyTerminal(for project: Project, runClaude: Bool) {
     }
     logEvent("scotty launch arguments=\(arguments)")
 
-    Task.detached {
-        let result = runProcessWithStatus(executableURL: URL(fileURLWithPath: scottyCLIPath), arguments: arguments)
-        let output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
-        let errorOutput = result.errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
-        logEvent("scotty exited status=\(result.status) output=\(output) error=\(errorOutput) path=\(project.path)")
+    let result = runProcessWithStatus(executableURL: URL(fileURLWithPath: scottyCLIPath), arguments: arguments)
+    let output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+    let errorOutput = result.errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+    logEvent("scotty exited status=\(result.status) output=\(output) error=\(errorOutput) path=\(project.path)")
+    return (output, errorOutput, result.status)
+}
 
-        guard result.status == EXIT_SUCCESS else {
-            await MainActor.run {
-                showError(errorOutput.isEmpty ? "Failed to open \(project.path) in Scotty (exit \(result.status))." : errorOutput)
+/// Command-line mode used by launcher extensions. Returns an exit code, or nil to start the menu bar app.
+/// `--list-json` prints the merged project list; `--open <path>` opens a project the same way a menu
+/// click does, honoring the `Run claude on Open` setting.
+private func runCommandLine(_ arguments: [String]) -> Int32? {
+    guard let command = arguments.first else { return nil }
+    switch command {
+    case "--list-json":
+        let activePaths = loadScottyShellWorkingDirectories()
+        let rows = loadAllRecentProjects().map { project -> [String: Any] in
+            var row: [String: Any] = [
+                "path": project.path,
+                "name": project.displayName.isEmpty ? project.path : project.displayName,
+                "active": activePaths.contains(project.path),
+            ]
+            if let lastOpenedAt = project.lastOpenedAt {
+                row["lastOpenedAt"] = Int(lastOpenedAt.timeIntervalSince1970 * 1000)
             }
-            return
+            return row
         }
+        guard let data = try? JSONSerialization.data(withJSONObject: rows, options: [.sortedKeys]) else {
+            FileHandle.standardError.write(Data("Failed to encode projects\n".utf8))
+            return EXIT_FAILURE
+        }
+        FileHandle.standardOutput.write(data + Data("\n".utf8))
+        return EXIT_SUCCESS
+    case "--open":
+        guard arguments.count == 2, arguments[1].hasPrefix("/") else {
+            FileHandle.standardError.write(Data("Usage: ProjectsBar --open <absolute path>\n".utf8))
+            return EXIT_FAILURE
+        }
+        let path = arguments[1]
+        let project = loadAllRecentProjects().first { $0.path == path } ?? Project(path: path, name: nil, lastOpenedAt: nil)
+        let result = runScottyTerminal(for: project, runClaude: UserDefaults.standard.bool(forKey: runClaudeDefaultsKey))
+        if result.status != EXIT_SUCCESS {
+            let message = result.errorOutput.isEmpty ? "Failed to open \(path) in Scotty (exit \(result.status))." : result.errorOutput
+            FileHandle.standardError.write(Data("\(message)\n".utf8))
+        }
+        return result.status
+    default:
+        FileHandle.standardError.write(Data("Unknown argument \(command). Use --list-json or --open <path>.\n".utf8))
+        return EXIT_FAILURE
     }
 }
 
@@ -426,6 +478,11 @@ private func runProcessWithStatus(executableURL: URL, arguments: [String]) -> (o
     let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
     process.waitUntilExit()
     return (String(data: data, encoding: .utf8) ?? "", String(data: errorData, encoding: .utf8) ?? "", process.terminationStatus)
+}
+
+// macOS passes `-psn_…` to apps launched by older LaunchServices paths; only our own flags enter CLI mode.
+if let status = runCommandLine(CommandLine.arguments.dropFirst().filter { !$0.hasPrefix("-psn_") }) {
+    exit(status)
 }
 
 let delegate = AppDelegate()

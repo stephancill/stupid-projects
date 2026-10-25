@@ -77,3 +77,17 @@
 ## 2026-10-25 (fix)
 
 - `Run claude on Open` failed with `zsh:1: command not found: claude`: Scotty's child environment has a minimal PATH, and a login-only shell (`zsh -lc`) does not read `~/.zshrc`, where `claude` is typically added to PATH or aliased. The command is now `/bin/zsh -ilc claude`; the interactive login shell loads `~/.zshrc` like a normal terminal, and dropping `exec` lets aliases and shell functions resolve.
+
+## 2026-10-25 (launcher extension)
+
+- The `ProjectsBar` executable has a command-line mode for launcher integrations, handled before `NSApplication` starts:
+  - `--list-json` prints the merged project list (same discovery, merge and 30-project cap as the menu) as a JSON array of `{ path, name, active, lastOpenedAt }`. `name` is the display name (the path for the `global` project), `active` comes from the Scotty process-tree scan, and `lastOpenedAt` is Unix milliseconds, omitted when unknown.
+  - `--open <absolute path>` opens the project exactly like a menu click and blocks until the Scotty CLI exits, forwarding its exit status and stderr. It looks the path up in the project list to get the display name (workspace) and falls back to the last path segment. It honors the `Run claude on Open` setting, since the binary inside the bundle shares the app's `UserDefaults` domain.
+  - Any other argument prints a usage error and exits 1. `-psn_…` arguments from LaunchServices are ignored, so a normal launch still starts the menu bar app.
+- The Scotty launch was split into `runScottyTerminal` (blocking, shared by both modes) and `openScottyTerminal` (menu wrapper that runs it detached and shows an alert on failure).
+- `extensions/projects-bar/` is a Raycast-format extension with one `Open Project` list command, built for Tinycast (which runs Raycast extensions in JavaScriptCore) and also usable in Raycast. It is a thin wrapper over the CLI mode so project discovery lives only in Swift.
+  - The `ProjectsBar App` preference is the path to `ProjectsBar.app` (`~` is expanded).
+  - The list is loaded with `execFileSync(... --list-json)` and validated with zod. Tinycast's runtime test harness returned empty stdout for a promisified async `execFile`, so the quick list call is synchronous; opening uses callback `execFile` because the Scotty CLI can wait up to 30 seconds.
+  - Opening closes the palette first and reports failures with a HUD.
+  - Build with `bun install && bun run build` (`ray build -e dist -o dist`), then install `dist/` in Tinycast via Settings → Extensions → Add from folder. Folder installs do not auto-update, so rebuild and re-add after changes.
+- Opening from Tinycast runs the Scotty CLI as a descendant of Tinycast, so macOS may ask for Automation permission for Tinycast rather than ProjectsBar.

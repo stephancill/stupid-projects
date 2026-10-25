@@ -1,0 +1,43 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "projects-bar",
+  "title": "ProjectsBar",
+  "description": "Search recent OpenCode and Claude Code projects and open them in Scotty via ProjectsBar.",
+  "icon": "icon.png",
+  "author": "stephancill",
+  "categories": ["Developer Tools"],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "open-project",
+      "title": "Open Project",
+      "description": "Search recent projects and open one as a Scotty workspace.",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "appPath",
+      "title": "ProjectsBar App",
+      "description": "Path to ProjectsBar.app, e.g. <repo>/.build/ProjectsBar.app. A leading ~ is expanded.",
+      "type": "textfield",
+      "required": true
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^2.9.0",
+    "@raycast/utils": "^2.3.3",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.8.0"
+  },
+  "scripts": {
+    "build": "ray build -e dist -o dist",
+    "dev": "ray develop",
+    "lint": "oxlint src",
+    "format": "oxfmt src"
+  }
+}
