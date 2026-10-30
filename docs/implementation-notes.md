@@ -94,3 +94,8 @@
 - Tinycast has no CLI. Its only external entry points are its URL schemes (which run commands of already-installed extensions) and settings import.
 - `scripts/install-tinycast-extension.sh` installs the extension without the Settings UI. It builds `extensions/projects-bar` and copies `package.json`, the built `*.js` command bundles and `assets/` into `~/Library/Application Support/com.tinycast.app/extensions/projects-bar/`, which is what Tinycast's `ExtensionCatalog.install` (Add from folder) copies. The installed manifest gets `appPath`'s `default` set to the repo's `.build/ProjectsBar.app`, so no manual preference is needed. The source manifest has no default.
 - Tinycast rescans that directory (`ExtensionManager.refresh`) when extensions are enabled at launch, when they are switched on, and when Settings → Extensions opens. Command bundles are read when a command runs, so a reinstall of an already-known extension applies on its next run. The script does not enable extensions (`extensionsEnabled`), since that goes through Tinycast's consent flow.
+
+## 2026-10-30
+
+- The launcher CLI is no longer capped: `--list-json` prints every known OpenCode and Claude Code project, and `--open` looks the path up in that full list. The Tinycast extension can therefore search all projects, not just the 30 most recent. The menu keeps its 30-project cap (10 shown, the rest under `More`).
+- `loadAllRecentProjects`, `loadRecentProjects` and `mergeProjects` take an optional `limit`; `nil` means no limit (`LIMIT -1` in the SQLite query).

@@ -48,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func refreshProjects() {
-        let recent = loadAllRecentProjects()
+        let recent = loadAllRecentProjects(limit: maxRecentProjects)
         projects = Array(recent.prefix(10))
         moreProjects = Array(recent.dropFirst(10))
         activeProjectPaths = loadScottyShellWorkingDirectories()
@@ -125,14 +125,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 }
 
-private func loadAllRecentProjects() -> [Project] {
+/// A nil `limit` returns every known project, used by the launcher CLI so search covers all of them.
+private func loadAllRecentProjects(limit: Int?) -> [Project] {
     mergeProjects(
-        loadRecentProjects(limit: maxRecentProjects) + loadRecentClaudeProjects(),
-        limit: maxRecentProjects
+        loadRecentProjects(limit: limit) + loadRecentClaudeProjects(),
+        limit: limit
     )
 }
 
-private func loadRecentProjects(limit: Int) -> [Project] {
+private func loadRecentProjects(limit: Int?) -> [Project] {
     let home = FileManager.default.homeDirectoryForCurrentUser.path
     let databasePath = "\(home)/.local/share/opencode/opencode.db"
     let query = """
@@ -153,7 +154,7 @@ private func loadRecentProjects(limit: Int) -> [Project] {
     )
     WHERE s.row_number = 1
     ORDER BY s.time_updated DESC
-    LIMIT \(limit);
+    LIMIT \(limit ?? -1);
     """
 
     let output = runProcess(
@@ -176,7 +177,7 @@ private func loadRecentProjects(limit: Int) -> [Project] {
         }
 }
 
-private func mergeProjects(_ projects: [Project], limit: Int) -> [Project] {
+private func mergeProjects(_ projects: [Project], limit: Int?) -> [Project] {
     var byPath: [String: Project] = [:]
     for project in projects {
         guard let existing = byPath[project.path] else {
@@ -194,7 +195,7 @@ private func mergeProjects(_ projects: [Project], limit: Int) -> [Project] {
     return Array(
         byPath.values
             .sorted { ($0.lastOpenedAt ?? .distantPast) > ($1.lastOpenedAt ?? .distantPast) }
-            .prefix(limit)
+            .prefix(limit ?? Int.max)
     )
 }
 
@@ -379,7 +380,7 @@ private func runCommandLine(_ arguments: [String]) -> Int32? {
     switch command {
     case "--list-json":
         let activePaths = loadScottyShellWorkingDirectories()
-        let rows = loadAllRecentProjects().map { project -> [String: Any] in
+        let rows = loadAllRecentProjects(limit: nil).map { project -> [String: Any] in
             var row: [String: Any] = [
                 "path": project.path,
                 "name": project.displayName.isEmpty ? project.path : project.displayName,
@@ -402,7 +403,7 @@ private func runCommandLine(_ arguments: [String]) -> Int32? {
             return EXIT_FAILURE
         }
         let path = arguments[1]
-        let project = loadAllRecentProjects().first { $0.path == path } ?? Project(path: path, name: nil, lastOpenedAt: nil)
+        let project = loadAllRecentProjects(limit: nil).first { $0.path == path } ?? Project(path: path, name: nil, lastOpenedAt: nil)
         let result = runScottyTerminal(for: project, runClaude: UserDefaults.standard.bool(forKey: runClaudeDefaultsKey))
         if result.status != EXIT_SUCCESS {
             let message = result.errorOutput.isEmpty ? "Failed to open \(path) in Scotty (exit \(result.status))." : result.errorOutput
