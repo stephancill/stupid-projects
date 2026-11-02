@@ -99,3 +99,23 @@
 
 - The launcher CLI is no longer capped: `--list-json` prints every known OpenCode and Claude Code project, and `--open` looks the path up in that full list. The Tinycast extension can therefore search all projects, not just the 30 most recent. The menu keeps its 30-project cap (10 shown, the rest under `More`).
 - `loadAllRecentProjects`, `loadRecentProjects` and `mergeProjects` take an optional `limit`; `nil` means no limit (`LIMIT -1` in the SQLite query).
+
+## 2026-11-02 (web app)
+
+- The menu bar app now hosts a web app on port 7447 for the lifetime of the app (`WebServer.swift`, page in `WebApp.swift`). It uses the Network framework (`NWListener`) and a hand-written HTTP/1.1 parser, so the app stays dependency-free. The menu has an `Open Web App` item that opens `http://127.0.0.1:7447`. If the port cannot be bound, the app shows an error alert and does not fall back to another port.
+- The page lists active Claude Code sessions and every known project (same discovery as `--list-json`, no cap), with a filter box. It updates live: `/events` is a server-sent events stream that receives the full state JSON whenever it changes. The server rebuilds the state every 3 seconds while at least one stream is open, plus right after a spawn or stop.
+- `New session` on a project runs `claude --bg --remote-control <name> --name <name>` in the project directory (`POST /api/sessions {path}`). The path must be a known project. Sessions run under Claude Code's own background service, so they outlive ProjectsBar. `Stop` runs `claude stop <id>` (`POST /api/sessions/stop {id}`) and is only offered for background sessions.
+- Sessions come from `claude agents --json` (interactive and background). A background session's claude.ai Remote Control URL is not in that JSON, so it is parsed from `claude logs <id>` (`https://claude.ai/code/session_…`). Found URLs are cached per id for the life of the app, because `claude logs` only keeps recent output. Misses are rechecked on every refresh during a session's first 2 minutes, then every 30 seconds. If ProjectsBar restarts after the URL has scrolled out of the logs, that session shows no link.
+- All `claude` calls run through `/bin/zsh -ilc 'claude "$@"'` with the arguments as positional parameters, so `~/.zshrc` PATH entries and aliases apply (`claude` is an alias here) without shell quoting. If `claude agents --json` fails, the page shows the error.
+- `runProcessWithStatus` takes an optional working directory and now gives child processes `/dev/null` as stdin.
+- Tailscale access: the listener binds all interfaces, but `accept` drops every peer that is not loopback, in `100.64.0.0/10` or in `fd7a:115c:a1e0::/48`, so other LAN hosts cannot connect. There is no authentication beyond being on the tailnet.
+- Because the API spawns processes, requests are checked against DNS rebinding and cross-site requests. The `Host` header must be an IP literal, `localhost`, a `*.ts.net` MagicDNS name or a single-label name. Non-GET requests must be `application/json`, which forces a CORS preflight that the server never approves, and any `Origin` must equal `http://<Host>`.
+- Tailscale's Shields Up blocks all incoming tailnet connections, including this one, so it must be off on the Mac for remote access.
+
+## 2026-11-02 (web app password)
+
+- The web app requires a password. On first launch ProjectsBar generates one and writes it to `~/Library/Application Support/ProjectsBar/web-password` with mode 0600. It is 20 random characters from a 32-character lowercase alphabet without `i`, `l`, `o` and `1` (100 bits), in groups of 5 separated by `-`. To change it, edit the file and restart ProjectsBar; the password is read once at launch. An empty or unreadable file stops the web app from starting and shows an error alert.
+- The menu has a `Copy Web App Password` item.
+- `GET /` serves a login page until the browser has a valid session cookie. Every other route except `POST /api/login` and `POST /api/logout` returns 401 without one. The main page reloads to the login page when a request or the event stream gets a 401.
+- `POST /api/login {password}` sets `projectsbar_session`: `HttpOnly`, `SameSite=Strict`, `Max-Age` 30 days, and no `Secure`, since the app is plain HTTP (Tailscale encrypts it). The cookie value is the hex HMAC-SHA256 of a fixed label keyed by the password (CryptoKit), so sessions survive app restarts and changing the password logs everyone out. Passwords and cookies are compared in constant time, and wrong passwords are answered after a 1 second delay.
+- `POST /api/logout` clears the cookie.

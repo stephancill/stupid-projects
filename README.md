@@ -12,6 +12,7 @@ Native Swift/AppKit, no dependencies.
 - Clicking a project focuses its terminal in a Scotty workspace named after the project, creating the workspace and terminal if needed.
 - Optional `Run claude on Open` toggle starts `claude` when a project's terminal is first created.
 - The list refreshes every time the menu opens.
+- A built-in web app (`Open Web App`, port 7447) lists projects and Claude Code sessions with live updates. It can start `claude --bg --remote-control` sessions in any project, link to them on claude.ai, and stop them. It is reachable on localhost and over Tailscale.
 
 ## Requirements
 
@@ -34,6 +35,10 @@ The build script produces an ad-hoc signed `.build/ProjectsBar.app` that runs as
 scripts/install-login-item.sh    # installs a LaunchAgent that opens the app at login
 scripts/uninstall-login-item.sh  # removes it
 ```
+
+## Web app
+
+While ProjectsBar runs, it serves a web app at `http://127.0.0.1:7447`, which is also reachable from your tailnet at `http://<machine>:7447`. Connections from other networks are refused. The page is password protected: ProjectsBar generates a password on first launch at `~/Library/Application Support/ProjectsBar/web-password`, and the menu's `Copy Web App Password` copies it. Tailscale's Shields Up must be off on the Mac for tailnet access. Each `New session` starts a background Claude Code session with Remote Control in that project. Open it from the page, from claude.ai/code or from the Claude app.
 
 ## Tinycast / Raycast extension
 

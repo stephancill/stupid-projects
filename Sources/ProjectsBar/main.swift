@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var projects: [Project] = []
     private var moreProjects: [Project] = []
     private var activeProjectPaths = Set<String>()
+    private let webServer = WebServer()
     private var shouldRunClaudeOnOpen: Bool {
         UserDefaults.standard.bool(forKey: runClaudeDefaultsKey)
     }
@@ -41,6 +42,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
         statusItem.menu = menu
         refreshProjects()
+        webServer.start { message in
+            Task { @MainActor in showError(message) }
+        }
     }
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -86,10 +90,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         runClaudeItem.target = self
         runClaudeItem.state = shouldRunClaudeOnOpen ? .on : .off
         menu.addItem(runClaudeItem)
+        let webAppItem = NSMenuItem(title: "Open Web App", action: #selector(openWebApp), keyEquivalent: "")
+        webAppItem.target = self
+        menu.addItem(webAppItem)
+        let copyPasswordItem = NSMenuItem(title: "Copy Web App Password", action: #selector(copyWebAppPassword), keyEquivalent: "")
+        copyPasswordItem.target = self
+        menu.addItem(copyPasswordItem)
         let refreshItem = NSMenuItem(title: "Refresh", action: #selector(refreshProjects), keyEquivalent: "r")
         refreshItem.target = self
         menu.addItem(refreshItem)
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+    }
+
+    @objc private func openWebApp() {
+        NSWorkspace.shared.open(webServerURL)
+    }
+
+    @objc private func copyWebAppPassword() {
+        do {
+            let password = try String(contentsOf: webPasswordURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(password, forType: .string)
+        } catch {
+            showError("Failed to read the web app password at \(webPasswordURL.path): \(error.localizedDescription)")
+        }
     }
 
     @objc private func toggleRunClaudeOnOpen(_ sender: NSMenuItem) {
@@ -126,7 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 }
 
 /// A nil `limit` returns every known project, used by the launcher CLI so search covers all of them.
-private func loadAllRecentProjects(limit: Int?) -> [Project] {
+func loadAllRecentProjects(limit: Int?) -> [Project] {
     mergeProjects(
         loadRecentProjects(limit: limit) + loadRecentClaudeProjects(),
         limit: limit
@@ -437,7 +461,7 @@ private func showError(_ message: String) {
     alert.runModal()
 }
 
-private func logEvent(_ message: String) {
+func logEvent(_ message: String) {
     let logURL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Logs/ProjectsBar.log")
     let line = "\(ISO8601DateFormatter().string(from: Date())) \(message)\n"
@@ -459,13 +483,15 @@ private func runProcess(executableURL: URL, arguments: [String]) -> String {
     runProcessWithStatus(executableURL: executableURL, arguments: arguments).output
 }
 
-private func runProcessWithStatus(executableURL: URL, arguments: [String]) -> (output: String, errorOutput: String, status: Int32) {
+func runProcessWithStatus(executableURL: URL, arguments: [String], currentDirectory: String? = nil) -> (output: String, errorOutput: String, status: Int32) {
     let process = Process()
     let pipe = Pipe()
     let errorPipe = Pipe()
 
     process.executableURL = executableURL
     process.arguments = arguments
+    process.currentDirectoryURL = currentDirectory.map { URL(fileURLWithPath: $0, isDirectory: true) }
+    process.standardInput = FileHandle.nullDevice
     process.standardOutput = pipe
     process.standardError = errorPipe
 
