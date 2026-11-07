@@ -25,6 +25,11 @@ let webAppHTML = #"""
 <p id="error" class="error" hidden></p>
 <h2>Sessions</h2>
 <ul id="sessions"></ul>
+<h2>New project</h2>
+<form id="new-project">
+  <input id="new-project-name" placeholder="Folder name" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+  <button id="new-project-submit" type="submit">Create and start session</button>
+</form>
 <h2>Projects</h2>
 <input id="filter" type="search" placeholder="Filter projects" autocomplete="off">
 <ul id="projects"></ul>
@@ -129,6 +134,28 @@ const render = () => {
 };
 
 document.getElementById("filter").addEventListener("input", renderProjects);
+document.getElementById("new-project").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = document.getElementById("new-project-name");
+  const submit = document.getElementById("new-project-submit");
+  submit.disabled = true;
+  submit.textContent = "Creating…";
+  try {
+    const response = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: input.value.trim() }),
+    });
+    if (response.status === 401) return location.reload();
+    if (!response.ok) throw new Error(await response.text());
+    input.value = "";
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    submit.disabled = false;
+    submit.textContent = "Create and start session";
+  }
+});
 document.getElementById("logout").addEventListener("click", async () => {
   await fetch("/api/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
   location.reload();

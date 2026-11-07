@@ -7,6 +7,9 @@ let webServerURL = URL(string: "http://127.0.0.1:\(webServerPort)")!
 
 private let refreshInterval: DispatchTimeInterval = .seconds(3)
 private let sessionCookieName = "projectsbar_session"
+/// New projects created from the web app go here.
+private let newProjectsRoot = FileManager.default.homeDirectoryForCurrentUser
+    .appendingPathComponent("environments/personal/pus", isDirectory: true)
 private let sessionCookieMaxAge = 30 * 24 * 60 * 60
 let webPasswordURL = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent("Library/Application Support/ProjectsBar/web-password")
@@ -155,6 +158,16 @@ final class WebServer: @unchecked Sendable {
             DispatchQueue.global().async {
                 self.spawnSession(path: path, on: connection)
             }
+        case ("POST", "/api/projects"):
+            guard let body = jsonObject(request.body), let name = body["name"] as? String else {
+                return respond(on: connection, status: "400 Bad Request", text: "Expected {\"name\": string}")
+            }
+            guard name.wholeMatch(of: /[A-Za-z0-9][A-Za-z0-9._-]{0,99}/) != nil else {
+                return respond(on: connection, status: "400 Bad Request", text: "Project names may only contain letters, digits, '.', '_' and '-', and must start with a letter or digit")
+            }
+            DispatchQueue.global().async {
+                self.createProject(name: name, on: connection)
+            }
         case ("POST", "/api/sessions/stop"):
             guard let body = jsonObject(request.body), let id = body["id"] as? String,
                   !id.isEmpty, id.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) })
@@ -200,20 +213,41 @@ final class WebServer: @unchecked Sendable {
 
     /// Spawns `claude --bg --remote-control <name>` in a known project directory. The session runs under
     /// Claude Code's own background service, so it outlives ProjectsBar.
-    private func spawnSession(path: String, on connection: NWConnection) {
-        guard let project = loadAllRecentProjects(limit: nil).first(where: { $0.path == path }) else {
+    /// Spawns in a known project, or in a folder directly inside `newProjectsRoot`: a project created from the
+    /// web app is not listed until its first transcript is written.
+    private func spawnSession(path: String, on connection: NWConnection, failurePrefix: String = "") {
+        let name: String
+        if let project = loadAllRecentProjects(limit: nil).first(where: { $0.path == path }) {
+            name = project.displayName.isEmpty ? project.path : project.displayName
+        } else if isNewProjectFolder(path) {
+            name = URL(fileURLWithPath: path).lastPathComponent
+        } else {
             return respond(on: connection, status: "404 Not Found", text: "Unknown project \(path)")
         }
-        let name = project.displayName.isEmpty ? project.path : project.displayName
-        let result = runClaude(["--bg", "--remote-control", name, "--name", name], directory: project.path)
+        let result = runClaude(["--bg", "--remote-control", name, "--name", name], directory: path)
         logEvent("web spawn path=\(path) status=\(result.status) output=\(result.output) error=\(result.errorOutput)")
         guard result.status == EXIT_SUCCESS,
               let match = result.output.firstMatch(of: /backgrounded · ([0-9a-f]+)/)
         else {
-            return respond(on: connection, status: "500 Internal Server Error", text: commandFailure("claude --bg", result))
+            return respond(on: connection, status: "500 Internal Server Error", text: failurePrefix + commandFailure("claude --bg", result))
         }
-        respond(on: connection, status: "200 OK", json: ["id": String(match.1)])
+        respond(on: connection, status: "200 OK", json: ["id": String(match.1), "path": path])
         queue.async { self.refresh() }
+    }
+
+    /// Creates `<newProjectsRoot>/<name>` and spawns a session in it. An existing folder is an error, not
+    /// reused. If the spawn fails the folder is kept, and the error says so.
+    private func createProject(name: String, on connection: NWConnection) {
+        let directory = newProjectsRoot.appendingPathComponent(name, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        } catch CocoaError.fileWriteFileExists {
+            return respond(on: connection, status: "409 Conflict", text: "\(directory.path) already exists")
+        } catch {
+            return respond(on: connection, status: "500 Internal Server Error", text: "Failed to create \(directory.path): \(error.localizedDescription)")
+        }
+        logEvent("web created project path=\(directory.path)")
+        spawnSession(path: directory.path, on: connection, failurePrefix: "Created \(directory.path), but ")
     }
 
     private func stopSession(id: String, on connection: NWConnection) {
@@ -464,6 +498,14 @@ private func constantTimeEquals(_ lhs: String, _ rhs: String) -> Bool {
     return zip(lhs, rhs).reduce(0) { $0 | ($1.0 ^ $1.1) } == 0
 }
 
+private func isNewProjectFolder(_ path: String) -> Bool {
+    var isDirectory: ObjCBool = false
+    let url = URL(fileURLWithPath: path).standardizedFileURL
+    return url.deletingLastPathComponent().path == newProjectsRoot.standardizedFileURL.path
+        && FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+        && isDirectory.boolValue
+}
+
 private func jsonObject(_ data: Data) -> [String: Any]? {
     try? JSONSerialization.jsonObject(with: data) as? [String: Any]
 }
@@ -479,6 +521,8 @@ private func runClaude(_ arguments: [String], directory: String? = nil) -> (outp
 }
 
 private func commandFailure(_ command: String, _ result: (output: String, errorOutput: String, status: Int32)) -> String {
-    let detail = result.errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+    // Some failures, such as "Workspace not trusted", are printed to stdout.
+    let errorOutput = result.errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+    let detail = errorOutput.isEmpty ? result.output.trimmingCharacters(in: .whitespacesAndNewlines) : errorOutput
     return "\(command) failed (exit \(result.status))\(detail.isEmpty ? "" : ": \(detail)")"
 }

@@ -38,7 +38,7 @@ scripts/uninstall-login-item.sh  # removes it
 
 ## Web app
 
-While ProjectsBar runs, it serves a web app at `http://127.0.0.1:7447`, which is also reachable from your tailnet at `http://<machine>:7447`. Connections from other networks are refused. The page is password protected: ProjectsBar generates a password on first launch at `~/Library/Application Support/ProjectsBar/web-password`, and the menu's `Copy Web App Password` copies it. Tailscale's Shields Up must be off on the Mac for tailnet access. Each `New session` starts a background Claude Code session with Remote Control in that project. Open it from the page, from claude.ai/code or from the Claude app.
+While ProjectsBar runs, it serves a web app at `http://127.0.0.1:7447`, which is also reachable from your tailnet at `http://<machine>:7447`. Connections from other networks are refused. The page is password protected: ProjectsBar generates a password on first launch at `~/Library/Application Support/ProjectsBar/web-password`, and the menu's `Copy Web App Password` copies it. Tailscale's Shields Up must be off on the Mac for tailnet access. Each `New session` starts a background Claude Code session with Remote Control in that project. `New project` creates `~/environments/personal/pus/<name>` and starts a session there. Claude Code only starts sessions in trusted folders, so run `claude` once in `~/environments/personal/pus` and accept the trust prompt. Open it from the page, from claude.ai/code or from the Claude app.
 
 ## Tinycast / Raycast extension
 

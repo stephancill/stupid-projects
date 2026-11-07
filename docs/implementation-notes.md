@@ -119,3 +119,11 @@
 - `GET /` serves a login page until the browser has a valid session cookie. Every other route except `POST /api/login` and `POST /api/logout` returns 401 without one. The main page reloads to the login page when a request or the event stream gets a 401.
 - `POST /api/login {password}` sets `projectsbar_session`: `HttpOnly`, `SameSite=Strict`, `Max-Age` 30 days, and no `Secure`, since the app is plain HTTP (Tailscale encrypts it). The cookie value is the hex HMAC-SHA256 of a fixed label keyed by the password (CryptoKit), so sessions survive app restarts and changing the password logs everyone out. Passwords and cookies are compared in constant time, and wrong passwords are answered after a 1 second delay.
 - `POST /api/logout` clears the cookie.
+
+## 2026-11-07 (new projects)
+
+- The web app has a `New project` form. `POST /api/projects {name}` creates `~/environments/personal/pus/<name>` and spawns a Remote Control session in it, the same way `New session` does. The parent folder is the `newProjectsRoot` constant in `WebServer.swift`.
+- Names must match `[A-Za-z0-9][A-Za-z0-9._-]{0,99}`, so they cannot contain `/`, start with `.` or escape the parent folder. An existing folder returns 409 and is never reused. If the spawn fails, the new folder is kept and the error starts with `Created <path>, but`.
+- A new project is not in the project list until Claude Code writes its first transcript, so `POST /api/sessions` also accepts an existing folder directly inside `newProjectsRoot`.
+- Claude Code refuses to start a background session in an untrusted folder ("Workspace not trusted"). ProjectsBar does not write trust into `~/.claude.json`. It relies on `~/environments/personal/pus` being trusted, which also covers new folders inside it (checked 2026-11-07). Without that trust, the page shows Claude's error.
+- Command failures now fall back to stdout when stderr is empty, because `claude --bg` prints "Workspace not trusted" to stdout.
