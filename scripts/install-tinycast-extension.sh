@@ -26,7 +26,7 @@ done
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 extension_dir="$repo_dir/extensions/projects-bar"
 app_path="$repo_dir/.build/ProjectsBar.app"
-tinycast_support="$HOME/Library/Application Support/com.tinycast.app"
+tinycast_support="$HOME/Library/Application Support/com.abueammar.tinycast"
 destination="$tinycast_support/extensions/projects-bar"
 
 if [[ ! -d "$tinycast_support" ]]; then

@@ -143,3 +143,7 @@
 - `--new-project <absolute path>` validates the last path component with the same rule (`isValidProjectName`, now shared with the web app), requires the parent folder to exist and the folder not to, creates it, then opens it exactly like `--open`, honoring `Run claude on Open`. The new folder has no transcripts yet, so it opens in a workspace named after the folder. If Scotty fails after the folder was created, the error starts with `Created <path>, but`.
 - The web app's `New project` still uses its own `newProjectsRoot` constant; the Tinycast preference does not change it.
 - `tsconfig.json` now includes `raycast-env.d.ts`, so commands can use the generated `Preferences.*` and `Arguments.*` types. With two commands, ray externalises shared dependencies into `dist/node_modules`, which the install script now copies.
+
+## 2026-11-16 (Tinycast bundle ID)
+
+- Tinycast 0.12 changed its bundle ID from `com.tinycast.app` to `com.abueammar.tinycast`, and its data moved to `~/Library/Application Support/com.abueammar.tinycast`. The install script now copies the extension into `.../com.abueammar.tinycast/extensions/projects-bar` and fails if that folder does not exist.

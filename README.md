@@ -61,7 +61,7 @@ To build and install it into Tinycast (rerun after changes):
 scripts/install-tinycast-extension.sh [--projects-folder <path>]
 ```
 
-The script copies the build into `~/Library/Application Support/com.tinycast.app/extensions/projects-bar`, like Tinycast's Add from folder does, and defaults the `ProjectsBar App` preference to this repo's `.build/ProjectsBar.app`. `--projects-folder` changes the default `Projects Folder`; a value set in Tinycast's settings still wins. Extensions must be enabled in Tinycast's Settings → Extensions. Tinycast picks up a new install at launch or when that pane opens. To use the extension in Raycast instead, run `bun run build` in `extensions/projects-bar` and set the preference by hand.
+The script copies the build into `~/Library/Application Support/com.abueammar.tinycast/extensions/projects-bar`, like Tinycast's Add from folder does, and defaults the `ProjectsBar App` preference to this repo's `.build/ProjectsBar.app`. `--projects-folder` changes the default `Projects Folder`; a value set in Tinycast's settings still wins. Extensions must be enabled in Tinycast's Settings → Extensions. Tinycast picks up a new install at launch or when that pane opens. To use the extension in Raycast instead, run `bun run build` in `extensions/projects-bar` and set the preference by hand.
 
 ## How it works
 
