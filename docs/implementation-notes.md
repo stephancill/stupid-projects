@@ -127,3 +127,11 @@
 - A new project is not in the project list until Claude Code writes its first transcript, so `POST /api/sessions` also accepts an existing folder directly inside `newProjectsRoot`.
 - Claude Code refuses to start a background session in an untrusted folder ("Workspace not trusted"). ProjectsBar does not write trust into `~/.claude.json`. It relies on `~/environments/personal/pus` being trusted, which also covers new folders inside it (checked 2026-11-07). Without that trust, the page shows Claude's error.
 - Command failures now fall back to stdout when stderr is empty, because `claude --bg` prints "Workspace not trusted" to stdout.
+
+## 2026-11-16 (Scotty 0.7 CLI)
+
+- Requires Scotty 0.7.2 or later. Scotty replaced `scotty terminal --name … --if-existing focus` with `scotty new --alias … --reuse`. Projects now open with `scotty new --alias <alias> --reuse --workspace <display name> --cwd <path> [-- /bin/zsh -ilc claude]`.
+- Aliases must be unique across Scotty, at most 128 UTF-8 bytes and free of slashes, so the project path can't be used directly. `scottyAlias(forProjectPath:)` replaces the home directory with `~` and slashes with `:` (e.g. `~:code:my-app`). A path whose alias would exceed 128 bytes uses its last component (up to 100 bytes) plus `-` and the first 16 hex digits of the SHA-256 of the full path.
+- `--reuse` focuses the terminal with that alias wherever it is, not only in the project's workspace, and never re-runs its command. Aliases persist across session restore.
+- Terminals opened by earlier versions with `--name` have no alias, so the first click on such a project after upgrading opens a new terminal.
+- The `●` active markers now come from `scotty ls --kind terminal --json` (each terminal's `workingDirectory`) instead of walking Scotty's process tree with `ps` and `lsof`. `scotty ls` never starts Scotty and takes about 70 ms. If it fails, the failure is logged and no projects are marked active. A project is active when a terminal's working directory equals its path exactly, as before.

@@ -18,7 +18,7 @@ Native Swift/AppKit, no dependencies.
 
 - macOS 14 or later
 - Swift 6 toolchain (Xcode or Command Line Tools)
-- Scotty 0.5.0 or later installed at `/Applications/Scotty.app` (uses its bundled `scotty` CLI)
+- Scotty 0.7.2 or later installed at `/Applications/Scotty.app` (uses its bundled `scotty` CLI)
 
 ## Build and run
 

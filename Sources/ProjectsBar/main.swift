@@ -1,4 +1,5 @@
 import AppKit
+import CryptoKit
 import Foundation
 
 private let runClaudeDefaultsKey = "runClaudeOnOpen"
@@ -287,72 +288,24 @@ private func encodeClaudeProjectName(_ path: String) -> String {
     String(path.map { $0.isASCII && ($0.isLetter || $0.isNumber) ? $0 : "-" })
 }
 
+/// Working directories of live Scotty terminals, from `scotty ls`, which never starts Scotty. A failure
+/// (for example a denied Automation permission) is logged and treated as no open terminals.
 private func loadScottyShellWorkingDirectories() -> Set<String> {
-    let rows = loadProcessRows()
-    let scottyPIDs = Set(
-        rows
-            .filter { $0.command.hasPrefix("\(scottyAppPath)/Contents/MacOS/ScottyApp") }
-            .map(\.pid)
+    let result = runProcessWithStatus(
+        executableURL: URL(fileURLWithPath: scottyCLIPath),
+        arguments: ["ls", "--kind", "terminal", "--json"]
     )
-
-    guard !scottyPIDs.isEmpty else { return [] }
-
-    var childPIDsByParent: [Int: [Int]] = [:]
-    for row in rows {
-        childPIDsByParent[row.parentPID, default: []].append(row.pid)
+    guard result.status == EXIT_SUCCESS else {
+        logEvent("scotty ls failed status=\(result.status) error=\(result.errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))")
+        return []
     }
-
-    var descendantPIDs = scottyPIDs
-    var frontier = Array(scottyPIDs)
-    while let currentPID = frontier.popLast() {
-        for childPID in childPIDsByParent[currentPID, default: []] where !descendantPIDs.contains(childPID) {
-            descendantPIDs.insert(childPID)
-            frontier.append(childPID)
-        }
+    guard let object = try? JSONSerialization.jsonObject(with: Data(result.output.utf8)) as? [String: Any],
+          let terminals = object["terminals"] as? [[String: Any]]
+    else {
+        logEvent("scotty ls returned unexpected output=\(result.output)")
+        return []
     }
-
-    let pidList = descendantPIDs.map(String.init).sorted().joined(separator: ",")
-    let output = runProcess(
-        executableURL: URL(fileURLWithPath: "/usr/sbin/lsof"),
-        arguments: ["-Fn", "-a", "-d", "cwd", "-p", pidList]
-    )
-
-    return Set(
-        output
-            .split(separator: "\n")
-            .compactMap { line -> String? in
-                let value = String(line).trimmingCharacters(in: .whitespacesAndNewlines)
-                guard value.hasPrefix("n") else { return nil }
-                return String(value.dropFirst())
-            }
-            .filter { !$0.isEmpty }
-    )
-}
-
-private struct ProcessRow {
-    let pid: Int
-    let parentPID: Int
-    let tty: String
-    let command: String
-}
-
-private func loadProcessRows() -> [ProcessRow] {
-    let output = runProcess(
-        executableURL: URL(fileURLWithPath: "/bin/ps"),
-        arguments: ["-axo", "pid=,ppid=,tty=,command="]
-    )
-
-    return output.split(separator: "\n").compactMap { line in
-        let parts = line.split(separator: " ", maxSplits: 3, omittingEmptySubsequences: true)
-        guard parts.count == 4,
-              let pid = Int(parts[0]),
-              let parentPID = Int(parts[1])
-        else {
-            return nil
-        }
-
-        return ProcessRow(pid: pid, parentPID: parentPID, tty: String(parts[2]), command: String(parts[3]))
-    }
+    return Set(terminals.compactMap { $0["workingDirectory"] as? String }.filter { !$0.isEmpty })
 }
 
 /// Focuses the project's terminal in its Scotty workspace, or creates it, via the bundled `scotty` CLI.
@@ -370,17 +323,35 @@ private func openScottyTerminal(for project: Project, runClaude: Bool) {
     }
 }
 
-/// The terminal is named after the project path, so projects sharing a display name (and therefore a
-/// workspace) stay distinct. A focused terminal keeps its directory and command, so `claude` only
-/// runs when the terminal is created. Blocks until the CLI exits.
+/// Scotty aliases are unique, at most 128 UTF-8 bytes and can't contain slashes, so the path's slashes
+/// become colons and the home directory becomes `~`, e.g. `~:code:my-app`. Longer paths keep their last
+/// component and add a hash of the full path to stay unique.
+func scottyAlias(forProjectPath path: String) -> String {
+    let home = FileManager.default.homeDirectoryForCurrentUser.path
+    var components = path.split(separator: "/").map(String.init)
+    let homeComponents = home.split(separator: "/").map(String.init)
+    if !homeComponents.isEmpty, components.starts(with: homeComponents) {
+        components = ["~"] + components.dropFirst(homeComponents.count)
+    }
+    let alias = components.isEmpty ? ":" : components.joined(separator: ":")
+    guard alias.utf8.count > 128 else { return alias }
+
+    let hash = SHA256.hash(data: Data(path.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+    let lastComponent = String(decoding: Data(components.last!.utf8).prefix(100), as: UTF8.self)
+    return "\(lastComponent)-\(hash)"
+}
+
+/// The terminal's alias is derived from the project path, so projects sharing a display name (and
+/// therefore a workspace) stay distinct. `--reuse` focuses an existing terminal without changing its
+/// directory or command, so `claude` only runs when the terminal is created. Blocks until the CLI exits.
 private func runScottyTerminal(for project: Project, runClaude: Bool) -> (output: String, errorOutput: String, status: Int32) {
     let workspace = project.displayName.isEmpty ? project.path : project.displayName
     var arguments = [
-        "terminal",
-        "--name", project.path,
-        "--if-existing", "focus",
+        "new",
+        "--alias", scottyAlias(forProjectPath: project.path),
+        "--reuse",
         "--workspace", workspace,
-        "--working-directory", project.path,
+        "--cwd", project.path,
     ]
     if runClaude {
         // Scotty's child environment has a minimal PATH, and `claude` is typically set up in `~/.zshrc`,
