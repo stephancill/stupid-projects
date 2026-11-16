@@ -147,3 +147,9 @@
 ## 2026-11-16 (Tinycast bundle ID)
 
 - Tinycast 0.12 changed its bundle ID from `com.tinycast.app` to `com.abueammar.tinycast`, and its data moved to `~/Library/Application Support/com.abueammar.tinycast`. The install script now copies the extension into `.../com.abueammar.tinycast/extensions/projects-bar` and fails if that folder does not exist.
+
+## 2026-11-16 (rebrand to stupid projects)
+
+- The app is now called "stupid projects" (always lowercase) everywhere a person reads the name: menu bar app name (`CFBundleName`, `CFBundleDisplayName`), web app title and heading, error alerts, README and the Tinycast extension title. Earlier entries in these notes use the old name, ProjectsBar.
+- Identifiers changed with it: Swift package and target `StupidProjects` (`Sources/StupidProjects`), executable and bundle `StupidProjects.app`, bundle ID and launch agent label `net.stupidtech.StupidProjects`, log `~/Library/Logs/StupidProjects.log`, web password `~/Library/Application Support/StupidProjects/web-password`, and the Tinycast extension `extensions/stupid-projects` (installed as `.../extensions/stupid-projects`).
+- No migration code. The new bundle ID has its own `UserDefaults` domain and macOS Automation grant, so settings (`Run claude on Open`), the web password and the Automation permission for Scotty start fresh unless copied over by hand. The web session cookie is now `stupid_projects_session` with HMAC label `stupid-projects-session`, so existing web logins are signed out.

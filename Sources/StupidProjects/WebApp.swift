@@ -5,7 +5,7 @@ let webAppHTML = #"""
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ProjectsBar</title>
+<title>stupid projects</title>
 <style>
   body { font-family: system-ui, sans-serif; max-width: 46rem; margin: 0 auto; padding: 1rem; line-height: 1.4; }
   h2 { font-size: 1.1rem; margin-top: 1.5rem; }
@@ -19,7 +19,7 @@ let webAppHTML = #"""
 </style>
 </head>
 <body>
-<h1>ProjectsBar</h1>
+<h1>stupid projects</h1>
 <p id="status" class="meta">Connecting…</p>
 <button id="logout">Log out</button>
 <p id="error" class="error" hidden></p>
@@ -186,7 +186,7 @@ let loginHTML = #"""
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ProjectsBar</title>
+<title>stupid projects</title>
 <style>
   body { font-family: system-ui, sans-serif; max-width: 46rem; margin: 0 auto; padding: 1rem; line-height: 1.4; }
   input { font-size: 1rem; padding: 0.4rem; }
@@ -194,7 +194,7 @@ let loginHTML = #"""
 </style>
 </head>
 <body>
-<h1>ProjectsBar</h1>
+<h1>stupid projects</h1>
 <form id="login">
   <p><input id="password" type="password" placeholder="Password" autocomplete="current-password" autofocus required></p>
   <p><button type="submit">Log in</button></p>

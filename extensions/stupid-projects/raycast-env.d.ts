@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 type ExtensionPreferences = {
-  /** ProjectsBar App - Path to ProjectsBar.app, e.g. <repo>/.build/ProjectsBar.app. A leading ~ is expanded. */
+  /** stupid projects app - Path to StupidProjects.app, e.g. <repo>/.build/StupidProjects.app. A leading ~ is expanded. */
   "appPath": string
 }
 

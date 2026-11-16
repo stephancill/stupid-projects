@@ -2,8 +2,8 @@
 set -euo pipefail
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-app_path="$repo_dir/.build/ProjectsBar.app"
-agent_path="$HOME/Library/LaunchAgents/net.stupidtech.ProjectsBar.plist"
+app_path="$repo_dir/.build/StupidProjects.app"
+agent_path="$HOME/Library/LaunchAgents/net.stupidtech.StupidProjects.plist"
 
 if [[ ! -d "$app_path" ]]; then
   "$repo_dir/scripts/build-app.sh"
@@ -17,7 +17,7 @@ cat > "$agent_path" <<PLIST
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>net.stupidtech.ProjectsBar</string>
+    <string>net.stupidtech.StupidProjects</string>
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/open</string>

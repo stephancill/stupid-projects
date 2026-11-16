@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { type LaunchProps, closeMainWindow, getPreferenceValues, showHUD } from "@raycast/api";
 import { z } from "zod";
 
-// Same rule ProjectsBar enforces: no `/` and no leading `.`, so the name can't escape the projects folder.
+// Same rule stupid projects enforces: no `/` and no leading `.`, so the name can't escape the projects folder.
 const nameSchema = z
   .string()
   .trim()
@@ -23,11 +23,11 @@ export default async function Command(props: LaunchProps<{ arguments: Arguments.
   }
 
   const { appPath, projectsFolder } = getPreferenceValues<Preferences.NewProject>();
-  const binaryPath = join(expandHome({ path: appPath }), "Contents/MacOS/ProjectsBar");
+  const binaryPath = join(expandHome({ path: appPath }), "Contents/MacOS/StupidProjects");
   const projectPath = join(expandHome({ path: projectsFolder }), parsed.data);
 
   await closeMainWindow();
-  // ProjectsBar creates the folder, then waits for the Scotty CLI, which can take up to 30 seconds.
+  // stupid projects creates the folder, then waits for the Scotty CLI, which can take up to 30 seconds.
   const failure = await new Promise<string | undefined>((resolve) => {
     execFile(binaryPath, ["--new-project", projectPath], (error, _stdout, stderr) => {
       resolve(error ? String(stderr).trim() || error.message : undefined);

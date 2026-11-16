@@ -3,13 +3,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "ProjectsBar",
+    name: "StupidProjects",
     platforms: [
         .macOS(.v14)
     ],
     targets: [
         .executableTarget(
-            name: "ProjectsBar",
+            name: "StupidProjects",
             linkerSettings: [
                 .linkedFramework("AppKit"),
             ]

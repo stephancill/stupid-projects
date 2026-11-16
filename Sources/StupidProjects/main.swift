@@ -407,7 +407,7 @@ private func runCommandLine(_ arguments: [String]) -> Int32? {
         return EXIT_SUCCESS
     case "--open":
         guard arguments.count == 2, arguments[1].hasPrefix("/") else {
-            FileHandle.standardError.write(Data("Usage: ProjectsBar --open <absolute path>\n".utf8))
+            FileHandle.standardError.write(Data("Usage: StupidProjects --open <absolute path>\n".utf8))
             return EXIT_FAILURE
         }
         let path = arguments[1]
@@ -420,7 +420,7 @@ private func runCommandLine(_ arguments: [String]) -> Int32? {
         return result.status
     case "--new-project":
         guard arguments.count == 2, arguments[1].hasPrefix("/") else {
-            FileHandle.standardError.write(Data("Usage: ProjectsBar --new-project <absolute path>\n".utf8))
+            FileHandle.standardError.write(Data("Usage: StupidProjects --new-project <absolute path>\n".utf8))
             return EXIT_FAILURE
         }
         let directory = URL(fileURLWithPath: arguments[1], isDirectory: true).standardizedFileURL
@@ -470,7 +470,7 @@ private func relativeTimeString(from date: Date) -> String {
 @MainActor
 private func showError(_ message: String) {
     let alert = NSAlert()
-    alert.messageText = "ProjectsBar Error"
+    alert.messageText = "stupid projects error"
     alert.informativeText = message
     alert.alertStyle = .critical
     alert.runModal()
@@ -478,7 +478,7 @@ private func showError(_ message: String) {
 
 func logEvent(_ message: String) {
     let logURL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Logs/ProjectsBar.log")
+        .appendingPathComponent("Library/Logs/StupidProjects.log")
     let line = "\(ISO8601DateFormatter().string(from: Date())) \(message)\n"
 
     guard let data = line.data(using: .utf8) else { return }

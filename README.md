@@ -1,4 +1,4 @@
-# ProjectsBar
+# stupid projects
 
 A macOS menu bar app that lists your recent [OpenCode](https://opencode.ai) and [Claude Code](https://claude.com/claude-code) projects and opens them as workspaces in [Scotty](https://scottyterm.com).
 
@@ -24,10 +24,10 @@ Native Swift/AppKit, no dependencies.
 
 ```sh
 scripts/build-app.sh
-open .build/ProjectsBar.app
+open .build/StupidProjects.app
 ```
 
-The build script produces an ad-hoc signed `.build/ProjectsBar.app` that runs as a menu bar accessory (no Dock icon).
+The build script produces an ad-hoc signed `.build/StupidProjects.app` that runs as a menu bar accessory (no Dock icon).
 
 ## Launch at login
 
@@ -38,21 +38,21 @@ scripts/uninstall-login-item.sh  # removes it
 
 ## Web app
 
-While ProjectsBar runs, it serves a web app at `http://127.0.0.1:7447`, which is also reachable from your tailnet at `http://<machine>:7447`. Connections from other networks are refused. The page is password protected: ProjectsBar generates a password on first launch at `~/Library/Application Support/ProjectsBar/web-password`, and the menu's `Copy Web App Password` copies it. Tailscale's Shields Up must be off on the Mac for tailnet access. Each `New session` starts a background Claude Code session with Remote Control in that project. `New project` creates `~/environments/personal/pus/<name>` and starts a session there. Claude Code only starts sessions in trusted folders, so run `claude` once in `~/environments/personal/pus` and accept the trust prompt. Open it from the page, from claude.ai/code or from the Claude app.
+While stupid projects runs, it serves a web app at `http://127.0.0.1:7447`, which is also reachable from your tailnet at `http://<machine>:7447`. Connections from other networks are refused. The page is password protected: stupid projects generates a password on first launch at `~/Library/Application Support/StupidProjects/web-password`, and the menu's `Copy Web App Password` copies it. Tailscale's Shields Up must be off on the Mac for tailnet access. Each `New session` starts a background Claude Code session with Remote Control in that project. `New project` creates `~/environments/personal/pus/<name>` and starts a session there. Claude Code only starts sessions in trusted folders, so run `claude` once in `~/environments/personal/pus` and accept the trust prompt. Open it from the page, from claude.ai/code or from the Claude app.
 
 ## Tinycast / Raycast extension
 
-`extensions/projects-bar` is a Raycast-format extension for [Tinycast](https://github.com/abue-ammar/tinycast) (or Raycast) with two commands:
+`extensions/stupid-projects` is a Raycast-format extension for [Tinycast](https://github.com/abue-ammar/tinycast) (or Raycast) with two commands:
 
 - `Open Project` lists the same projects and opens one in Scotty.
 - `New Project <name>` creates `<Projects Folder>/<name>` and opens it in Scotty. The `Projects Folder` preference defaults to `~/Projects` and must already exist.
 
-Both call the ProjectsBar binary's command-line mode:
+Both call the stupid projects binary's command-line mode:
 
 ```sh
-.build/ProjectsBar.app/Contents/MacOS/ProjectsBar --list-json             # merged project list as JSON
-.build/ProjectsBar.app/Contents/MacOS/ProjectsBar --open <path>           # open like a menu click
-.build/ProjectsBar.app/Contents/MacOS/ProjectsBar --new-project <path>    # create the folder, then open it
+.build/StupidProjects.app/Contents/MacOS/StupidProjects --list-json             # merged project list as JSON
+.build/StupidProjects.app/Contents/MacOS/StupidProjects --open <path>           # open like a menu click
+.build/StupidProjects.app/Contents/MacOS/StupidProjects --new-project <path>    # create the folder, then open it
 ```
 
 To build and install it into Tinycast (rerun after changes):
@@ -61,7 +61,7 @@ To build and install it into Tinycast (rerun after changes):
 scripts/install-tinycast-extension.sh [--projects-folder <path>]
 ```
 
-The script copies the build into `~/Library/Application Support/com.abueammar.tinycast/extensions/projects-bar`, like Tinycast's Add from folder does, and defaults the `ProjectsBar App` preference to this repo's `.build/ProjectsBar.app`. `--projects-folder` changes the default `Projects Folder`; a value set in Tinycast's settings still wins. Extensions must be enabled in Tinycast's Settings → Extensions. Tinycast picks up a new install at launch or when that pane opens. To use the extension in Raycast instead, run `bun run build` in `extensions/projects-bar` and set the preference by hand.
+The script copies the build into `~/Library/Application Support/com.abueammar.tinycast/extensions/stupid-projects`, like Tinycast's Add from folder does, and defaults the `stupid projects app` preference to this repo's `.build/StupidProjects.app`. `--projects-folder` changes the default `Projects Folder`; a value set in Tinycast's settings still wins. Extensions must be enabled in Tinycast's Settings → Extensions. Tinycast picks up a new install at launch or when that pane opens. To use the extension in Raycast instead, run `bun run build` in `extensions/stupid-projects` and set the preference by hand.
 
 ## How it works
 

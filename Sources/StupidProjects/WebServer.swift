@@ -6,20 +6,20 @@ let webServerPort: UInt16 = 7447
 let webServerURL = URL(string: "http://127.0.0.1:\(webServerPort)")!
 
 private let refreshInterval: DispatchTimeInterval = .seconds(3)
-private let sessionCookieName = "projectsbar_session"
+private let sessionCookieName = "stupid_projects_session"
 /// New projects created from the web app go here.
 private let newProjectsRoot = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent("environments/personal/pus", isDirectory: true)
 private let sessionCookieMaxAge = 30 * 24 * 60 * 60
 let webPasswordURL = FileManager.default.homeDirectoryForCurrentUser
-    .appendingPathComponent("Library/Application Support/ProjectsBar/web-password")
+    .appendingPathComponent("Library/Application Support/StupidProjects/web-password")
 
 /// Web app for spawning Claude Code sessions with Remote Control. It lists projects and
 /// active Claude sessions and pushes the state to open pages over server-sent events (`/events`).
 /// Connection bookkeeping lives on `queue`; slow work (process spawning, project scans) runs on a
 /// global queue so requests are not blocked behind a refresh.
 final class WebServer: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "net.stupidtech.ProjectsBar.web")
+    private let queue = DispatchQueue(label: "net.stupidtech.StupidProjects.web")
     private var listener: NWListener?
     private var timer: DispatchSourceTimer?
     private var eventStreams: [ObjectIdentifier: NWConnection] = [:]
@@ -43,7 +43,7 @@ final class WebServer: @unchecked Sendable {
             return
         }
         sessionToken = HMAC<SHA256>
-            .authenticationCode(for: Data("projectsbar-session".utf8), using: SymmetricKey(data: Data(password.utf8)))
+            .authenticationCode(for: Data("stupid-projects-session".utf8), using: SymmetricKey(data: Data(password.utf8)))
             .map { String(format: "%02x", $0) }
             .joined()
         self.password = password
@@ -212,7 +212,7 @@ final class WebServer: @unchecked Sendable {
     }
 
     /// Spawns `claude --bg --remote-control <name>` in a known project directory. The session runs under
-    /// Claude Code's own background service, so it outlives ProjectsBar.
+    /// Claude Code's own background service, so it outlives stupid projects.
     /// Spawns in a known project, or in a folder directly inside `newProjectsRoot`: a project created from the
     /// web app is not listed until its first transcript is written.
     private func spawnSession(path: String, on connection: NWConnection, failurePrefix: String = "") {

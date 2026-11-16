@@ -27,7 +27,7 @@ type Project = z.infer<typeof projectsSchema>[number];
 const getBinaryPath = () => {
   const { appPath } = getPreferenceValues<{ appPath: string }>();
   const expanded = appPath.replace(/^~(?=$|\/)/, homedir());
-  return join(expanded, "Contents/MacOS/ProjectsBar");
+  return join(expanded, "Contents/MacOS/StupidProjects");
 };
 
 const listProjects = async () => {

@@ -1,8 +1,8 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
-  "name": "projects-bar",
-  "title": "ProjectsBar",
-  "description": "Search all OpenCode and Claude Code projects, or create a new one, and open them in Scotty via ProjectsBar.",
+  "name": "stupid-projects",
+  "title": "stupid projects",
+  "description": "Search all OpenCode and Claude Code projects, or create a new one, and open them in Scotty via stupid projects.",
   "icon": "icon.png",
   "author": "stephancill",
   "categories": ["Developer Tools"],
@@ -42,8 +42,8 @@
   "preferences": [
     {
       "name": "appPath",
-      "title": "ProjectsBar App",
-      "description": "Path to ProjectsBar.app, e.g. <repo>/.build/ProjectsBar.app. A leading ~ is expanded.",
+      "title": "stupid projects app",
+      "description": "Path to StupidProjects.app, e.g. <repo>/.build/StupidProjects.app. A leading ~ is expanded.",
       "type": "textfield",
       "required": true
     }
