@@ -42,20 +42,26 @@ While ProjectsBar runs, it serves a web app at `http://127.0.0.1:7447`, which is
 
 ## Tinycast / Raycast extension
 
-`extensions/projects-bar` is a Raycast-format extension that lists the same projects in [Tinycast](https://github.com/abue-ammar/tinycast) (or Raycast) and opens them in Scotty. It calls the ProjectsBar binary's command-line mode:
+`extensions/projects-bar` is a Raycast-format extension for [Tinycast](https://github.com/abue-ammar/tinycast) (or Raycast) with two commands:
+
+- `Open Project` lists the same projects and opens one in Scotty.
+- `New Project <name>` creates `<Projects Folder>/<name>` and opens it in Scotty. The `Projects Folder` preference defaults to `~/Projects` and must already exist.
+
+Both call the ProjectsBar binary's command-line mode:
 
 ```sh
-.build/ProjectsBar.app/Contents/MacOS/ProjectsBar --list-json      # merged project list as JSON
-.build/ProjectsBar.app/Contents/MacOS/ProjectsBar --open <path>    # open like a menu click
+.build/ProjectsBar.app/Contents/MacOS/ProjectsBar --list-json             # merged project list as JSON
+.build/ProjectsBar.app/Contents/MacOS/ProjectsBar --open <path>           # open like a menu click
+.build/ProjectsBar.app/Contents/MacOS/ProjectsBar --new-project <path>    # create the folder, then open it
 ```
 
 To build and install it into Tinycast (rerun after changes):
 
 ```sh
-scripts/install-tinycast-extension.sh
+scripts/install-tinycast-extension.sh [--projects-folder <path>]
 ```
 
-The script copies the build into `~/Library/Application Support/com.tinycast.app/extensions/projects-bar`, like Tinycast's Add from folder does, and defaults the `ProjectsBar App` preference to this repo's `.build/ProjectsBar.app`. Extensions must be enabled in Tinycast's Settings → Extensions. Tinycast picks up a new install at launch or when that pane opens. To use the extension in Raycast instead, run `bun run build` in `extensions/projects-bar` and set the preference by hand.
+The script copies the build into `~/Library/Application Support/com.tinycast.app/extensions/projects-bar`, like Tinycast's Add from folder does, and defaults the `ProjectsBar App` preference to this repo's `.build/ProjectsBar.app`. `--projects-folder` changes the default `Projects Folder`; a value set in Tinycast's settings still wins. Extensions must be enabled in Tinycast's Settings → Extensions. Tinycast picks up a new install at launch or when that pane opens. To use the extension in Raycast instead, run `bun run build` in `extensions/projects-bar` and set the preference by hand.
 
 ## How it works
 

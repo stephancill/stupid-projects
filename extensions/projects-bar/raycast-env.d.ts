@@ -18,10 +18,20 @@ declare type Preferences = ExtensionPreferences
 declare namespace Preferences {
   /** Preferences accessible in the `open-project` command */
   export type OpenProject = ExtensionPreferences & {}
+  /** Preferences accessible in the `new-project` command */
+  export type NewProject = ExtensionPreferences & {
+  /** Projects Folder - Existing folder that new projects are created in. A leading ~ is expanded. */
+  "projectsFolder": string
+}
 }
 
 declare namespace Arguments {
   /** Arguments passed to the `open-project` command */
   export type OpenProject = {}
+  /** Arguments passed to the `new-project` command */
+  export type NewProject = {
+  /** Project name */
+  "name": string
+}
 }
 

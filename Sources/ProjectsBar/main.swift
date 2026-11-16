@@ -367,9 +367,22 @@ private func runScottyTerminal(for project: Project, runClaude: Bool) -> (output
     return (output, errorOutput, result.status)
 }
 
+/// New project folder names: no `/`, no leading `.`, so a name can't escape the projects folder.
+func isValidProjectName(_ name: String) -> Bool {
+    name.wholeMatch(of: /[A-Za-z0-9][A-Za-z0-9._-]{0,99}/) != nil
+}
+
+private func isExistingDirectory(_ url: URL) -> Bool {
+    var isDirectory: ObjCBool = false
+    return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+}
+
+let projectNameRule = "Project names may only contain letters, digits, '.', '_' and '-', and must start with a letter or digit"
+
 /// Command-line mode used by launcher extensions. Returns an exit code, or nil to start the menu bar app.
 /// `--list-json` prints the merged project list; `--open <path>` opens a project the same way a menu
-/// click does, honoring the `Run claude on Open` setting.
+/// click does, honoring the `Run claude on Open` setting. `--new-project <path>` creates the folder (its
+/// parent must exist, and the folder must not) and opens it the same way.
 private func runCommandLine(_ arguments: [String]) -> Int32? {
     guard let command = arguments.first else { return nil }
     switch command {
@@ -405,8 +418,39 @@ private func runCommandLine(_ arguments: [String]) -> Int32? {
             FileHandle.standardError.write(Data("\(message)\n".utf8))
         }
         return result.status
+    case "--new-project":
+        guard arguments.count == 2, arguments[1].hasPrefix("/") else {
+            FileHandle.standardError.write(Data("Usage: ProjectsBar --new-project <absolute path>\n".utf8))
+            return EXIT_FAILURE
+        }
+        let directory = URL(fileURLWithPath: arguments[1], isDirectory: true).standardizedFileURL
+        let name = directory.lastPathComponent
+        guard isValidProjectName(name) else {
+            FileHandle.standardError.write(Data("\(projectNameRule)\n".utf8))
+            return EXIT_FAILURE
+        }
+        // The parent folder must already exist, so a mistyped projects folder fails instead of being created.
+        let parent = directory.deletingLastPathComponent()
+        guard isExistingDirectory(parent) else {
+            FileHandle.standardError.write(Data("Projects folder \(parent.path) does not exist\n".utf8))
+            return EXIT_FAILURE
+        }
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        } catch {
+            FileHandle.standardError.write(Data("Failed to create \(directory.path): \(error.localizedDescription)\n".utf8))
+            return EXIT_FAILURE
+        }
+        logEvent("cli created project path=\(directory.path)")
+        let project = Project(path: directory.path, name: nil, lastOpenedAt: nil)
+        let result = runScottyTerminal(for: project, runClaude: UserDefaults.standard.bool(forKey: runClaudeDefaultsKey))
+        if result.status != EXIT_SUCCESS {
+            let detail = result.errorOutput.isEmpty ? "Scotty exited with status \(result.status)." : result.errorOutput
+            FileHandle.standardError.write(Data("Created \(directory.path), but failed to open it in Scotty: \(detail)\n".utf8))
+        }
+        return result.status
     default:
-        FileHandle.standardError.write(Data("Unknown argument \(command). Use --list-json or --open <path>.\n".utf8))
+        FileHandle.standardError.write(Data("Unknown argument \(command). Use --list-json, --open <path> or --new-project <path>.\n".utf8))
         return EXIT_FAILURE
     }
 }

@@ -135,3 +135,11 @@
 - `--reuse` focuses the terminal with that alias wherever it is, not only in the project's workspace, and never re-runs its command. Aliases persist across session restore.
 - Terminals opened by earlier versions with `--name` have no alias, so the first click on such a project after upgrading opens a new terminal.
 - The `●` active markers now come from `scotty ls --kind terminal --json` (each terminal's `workingDirectory`) instead of walking Scotty's process tree with `ps` and `lsof`. `scotty ls` never starts Scotty and takes about 70 ms. If it fails, the failure is logged and no projects are marked active. A project is active when a terminal's working directory equals its path exactly, as before.
+
+## 2026-11-16 (Tinycast New Project)
+
+- The Tinycast extension has a no-view `New Project` command with a required `name` argument. It validates the name with zod using the web app's rule (`[A-Za-z0-9][A-Za-z0-9._-]{0,99}`, trimmed), then runs `ProjectsBar --new-project <Projects Folder>/<name>` and reports failures with a HUD.
+- `Projects Folder` is a command preference (default `~/Projects`, leading `~` expanded). `scripts/install-tinycast-extension.sh --projects-folder <path>` sets that default in the installed manifest only, so no personal path is committed.
+- `--new-project <absolute path>` validates the last path component with the same rule (`isValidProjectName`, now shared with the web app), requires the parent folder to exist and the folder not to, creates it, then opens it exactly like `--open`, honoring `Run claude on Open`. The new folder has no transcripts yet, so it opens in a workspace named after the folder. If Scotty fails after the folder was created, the error starts with `Created <path>, but`.
+- The web app's `New project` still uses its own `newProjectsRoot` constant; the Tinycast preference does not change it.
+- `tsconfig.json` now includes `raycast-env.d.ts`, so commands can use the generated `Preferences.*` and `Arguments.*` types. With two commands, ray externalises shared dependencies into `dist/node_modules`, which the install script now copies.

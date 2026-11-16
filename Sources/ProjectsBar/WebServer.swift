@@ -162,8 +162,8 @@ final class WebServer: @unchecked Sendable {
             guard let body = jsonObject(request.body), let name = body["name"] as? String else {
                 return respond(on: connection, status: "400 Bad Request", text: "Expected {\"name\": string}")
             }
-            guard name.wholeMatch(of: /[A-Za-z0-9][A-Za-z0-9._-]{0,99}/) != nil else {
-                return respond(on: connection, status: "400 Bad Request", text: "Project names may only contain letters, digits, '.', '_' and '-', and must start with a letter or digit")
+            guard isValidProjectName(name) else {
+                return respond(on: connection, status: "400 Bad Request", text: projectNameRule)
             }
             DispatchQueue.global().async {
                 self.createProject(name: name, on: connection)
